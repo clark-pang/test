@@ -7,6 +7,10 @@ const { findAllUsers } = require("./database/db");
 // const customRoutes = require("./utils/custom_routes");
 const express = require("express");
 const axios = require("axios");
+const TelegramBot = require("node-telegram-bot-api");
+const telegramToken = process.env.TELEGRAM_TOKEN;
+const telegramBot = new TelegramBot(telegramToken);
+
 const receiver = new ExpressReceiver({
   scopes: ["incoming-webhook"],
   token: process.env.SLACK_BOT_TOKEN,
@@ -65,7 +69,7 @@ const app = new App({
 
 // Non-Slack HTTP request listeners on receiver.router
 
-receiver.router.get("/users", async (_, res, next) => {
+receiver.router.get("/installations", async (_, res, next) => {
   try {
     const users = await findAllUsers();
     res.send(users);
@@ -75,23 +79,32 @@ receiver.router.get("/users", async (_, res, next) => {
   }
 });
 
-receiver.router.get("/users", async (_, res, next) => {
+receiver.router.post("/slack/messages", async (req, res, next) => {
   try {
-    const users = await findAllUsers();
-    res.send(users);
+    const { message, incomingWebhook } = req.body;
+    const response = await axios.post(incomingWebhook.url, { text: message });
+    res.status(201).send();
   } catch (error) {
-    console.log("error finding all users");
+    console.log("error sending message to slack: ", error);
     next(error);
   }
 });
+receiver.router.post("/telegram/messages", async (req, res, next) => {
+  const { message, channelId } = req.body;
+  const convert = Number(channelId);
 
-receiver.router.post("/notifications:generate", async (req, res, next) => {
+  console.log("message: ", message);
+  console.log("convert: ", convert);
+  console.log("channelId: ", channelId);
   try {
-    const { text, incomingWebhook } = req.body;
-    const response = await axios.post(incomingWebhook.url, { text });
-    res.status(200).json({ message: "notification generated: ", text });
+    const teleResponse = await telegramBot.sendMessage(channelId, message);
+    // const response = await axios.post(
+    //   `https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage?chat_id=${channelId}&text=${message}`
+    // );
+    // console.log("response: ", response);
+    res.status(201).send();
   } catch (error) {
-    console.log("error posting to incoming webhook: ", error);
+    console.log("error sending message to telegram: ", error);
     next(error);
   }
 });

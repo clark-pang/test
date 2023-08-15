@@ -3,46 +3,58 @@ import { useState, useEffect } from "react";
 import { RadioButton } from "primereact/radiobutton";
 
 function App() {
-  const [text, setText] = useState("");
-  const [users, setUsers] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [slackMessage, setSlackMessage] = useState("");
+  const [telegramChannelId, setTelegramChannelId] = useState("");
+  const [telegramMessage, setTelegramMessage] = useState("");
+  const [installations, setInstallations] = useState(null);
+  const [selectedInstallation, setSelectedInstallation] = useState(null);
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchInstallations = async () => {
       try {
-        const response = await axios.get("/api/users");
-        const users = response.data;
-        setUsers(users);
+        const response = await axios.get("/api/installations");
+        setInstallations(response.data);
       } catch (error) {
-        console.log("error fetching users: ", error);
+        console.log("error fetching installations: ", error.message);
       }
     };
-    fetchUsers();
+    fetchInstallations();
   }, []);
 
-  let userElements;
-  if (users) {
-    userElements = users.map((user) => {
+  let installationElements;
+  if (installations) {
+    installationElements = installations.map((installation) => {
       return (
-        <div key={user._id}>
+        <div key={installation._id}>
           <RadioButton
-            inputId={user._id}
-            name="user"
-            value={user}
-            onChange={(e) => setSelectedUser(e.value)}
-            checked={selectedUser?._id === user?._id}
+            inputId={installation._id}
+            name="installation"
+            value={installation}
+            onChange={(e) => setSelectedInstallation(e.value)}
+            checked={selectedInstallation?._id === installation?._id}
           />
-          <label htmlFor={user._id}>{user.team.name}</label>
+          <label htmlFor={installation._id}>{installation.team.name}</label>
         </div>
       );
     });
   }
 
-  const generateNotification = async () => {
+  const sendSlackMessage = async () => {
     try {
-      await axios.post("/api/notifications:generate", {
-        text,
-        incomingWebhook: selectedUser.incomingWebhook,
+      await axios.post("/api/slack/messages", {
+        message: slackMessage,
+        incomingWebhook: selectedInstallation.incomingWebhook,
+      });
+    } catch (error) {
+      console.log("error generating notification: ", error);
+    }
+  };
+
+  const sendTelegramMessage = async () => {
+    try {
+      await axios.post("/api/telegram/messages", {
+        channelId: telegramChannelId,
+        message: telegramMessage,
       });
     } catch (error) {
       console.log("error generating notification: ", error);
@@ -51,8 +63,41 @@ function App() {
 
   return (
     <>
-      <input value={text} onChange={(e) => setText(e.target.value)}></input>
-      <button onClick={generateNotification}>Notify</button>
+      <h1>Notification Testing </h1>
+      <hr />
+      <h2>Telegram</h2>
+      <p>
+        If you do not know your Channel ID, you can find it by opening the
+        channel in Telegram's web client. It's the "-XXXXXXXXXX" in the URL
+        where X is a number. The "-" is important. You must also add "100"
+        between the "-" and the X's. You can also find your Channel ID just by
+        forwarding a message to @getidsbot. This is more consistent and is
+        recommended.
+      </p>
+      <label>
+        <b>Channel ID</b>
+        <br />
+        <input
+          value={telegramChannelId}
+          onChange={(e) => setTelegramChannelId(e.target.value)}
+        ></input>
+      </label>
+      <br />
+      <br />
+      <label>
+        <b>Message</b>
+        <br />
+        <input
+          value={telegramMessage}
+          onChange={(e) => setTelegramMessage(e.target.value)}
+        ></input>
+      </label>
+      <br />
+      <br />
+      <button onClick={sendTelegramMessage}>Send</button>
+      <hr></hr>
+      <h2>Slack</h2>
+      <p>Click 'Add to Slack' to install app to a workspace</p>
       <a href="https://slack.com/oauth/v2/authorize?client_id=1695294461842.5742429106352&scope=incoming-webhook">
         <img
           alt="Add to Slack"
@@ -62,7 +107,25 @@ function App() {
           srcSet="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x"
         />
       </a>
-      {userElements}
+      <br />
+      <br />
+      <b>Select which installation you'd like to message</b>
+      <br />
+
+      {installationElements ? installationElements : "No installations yet"}
+      <br />
+      <br />
+      <label>
+        <b>Message</b>
+        <br />
+        <input
+          value={slackMessage}
+          onChange={(e) => setSlackMessage(e.target.value)}
+        ></input>
+      </label>
+      <br />
+      <br />
+      <button onClick={sendSlackMessage}>Send</button>
     </>
   );
 }
