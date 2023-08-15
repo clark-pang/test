@@ -74,6 +74,10 @@ function App() {
         forwarding a message to @getidsbot. This is more consistent and is
         recommended.
       </p>
+      <p>
+        Before the bot can send messages to the channel, you must add the bot
+        "@botname" as an admin to the channel with permission to post messages.
+      </p>
       <label>
         <b>Channel ID</b>
         <br />
